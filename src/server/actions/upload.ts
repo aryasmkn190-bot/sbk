@@ -1,15 +1,31 @@
 'use server'
 
 /**
- * Upload Image — Supabase Storage
+ * Upload Image — Cloudflare R2 (S3-compatible)
+ *
+ * Uses @aws-sdk/client-s3 to upload files to Cloudflare R2.
+ * R2 is free for egress bandwidth, making it ideal for serving images.
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 
-function getSupabase() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    return createClient(url, key)
+function getR2Client() {
+    const accountId = process.env.R2_ACCOUNT_ID
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
+
+    if (!accountId || !accessKeyId || !secretAccessKey) {
+        throw new Error('Missing R2 credentials in .env (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)')
+    }
+
+    return new S3Client({
+        region: 'auto',
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: {
+            accessKeyId,
+            secretAccessKey,
+        },
+    })
 }
 
 export async function uploadImage(formData: FormData) {
@@ -20,26 +36,25 @@ export async function uploadImage(formData: FormData) {
     const buffer = Buffer.from(bytes)
     const ext = file.name.split('.').pop() || 'png'
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const filePath = `uploads/${filename}`
+    const key = `uploads/${filename}`
 
-    const supabase = getSupabase()
+    const bucketName = process.env.R2_BUCKET_NAME || 'sbk'
+    const publicDomain = process.env.R2_PUBLIC_DOMAIN // e.g. https://cdn.salingbantukreasi.or.id
 
-    const { error } = await supabase.storage
-        .from('sbk-uploads')
-        .upload(filePath, buffer, {
-            contentType: file.type,
-            upsert: false,
-        })
+    const client = getR2Client()
 
-    if (error) {
-        console.error('Supabase storage upload error:', error)
-        throw new Error('Upload gagal: ' + error.message)
-    }
+    await client.send(new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: buffer,
+        ContentType: file.type,
+    }))
 
-    // Get public URL
-    const { data } = supabase.storage
-        .from('sbk-uploads')
-        .getPublicUrl(filePath)
+    // Return public URL
+    // If you have a custom domain on R2, use that; otherwise use the R2.dev URL
+    const url = publicDomain
+        ? `${publicDomain}/${key}`
+        : `https://${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`
 
-    return { url: data.publicUrl }
+    return { url }
 }
