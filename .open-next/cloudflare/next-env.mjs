@@ -1,0 +1,3 @@
+export const production = {"AUTH_SECRET":"lmsdZgyoJ+vIJLrxo3lVVoq5uP0tKKclr","NEXTAUTH_URL":"http://localhost:3000/","AUTH_TRUST_HOST":"true","GOOGLE_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_SECRET":"******"};
+export const development = {"AUTH_SECRET":"lmsdZgyoJ+vIJLrxo3lVVoq5uP0tKKclr","NEXTAUTH_URL":"http://localhost:3000/","AUTH_TRUST_HOST":"true","GOOGLE_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_SECRET":"******"};
+export const test = {"AUTH_SECRET":"lmsdZgyoJ+vIJLrxo3lVVoq5uP0tKKclr","NEXTAUTH_URL":"http://localhost:3000/","AUTH_TRUST_HOST":"true","GOOGLE_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_ID":"******","GITHUB_AUTH_CLIENT_SECRET":"******"};

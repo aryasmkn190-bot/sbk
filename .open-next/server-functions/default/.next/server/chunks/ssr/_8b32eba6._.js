@@ -1,0 +1,20 @@
+module.exports=[69856,a=>{"use strict";var b=a.i(37936),c=a.i(77607),d=a.i(95562),e=a.i(13095);let f=async()=>{await (0,c.signOut)({redirectTo:d.default.unAuthenticatedEntryPath})};(0,e.ensureServerEntryExports)([f]),(0,b.registerServerReference)(f,"0044e7f0bb2859832d1c4d0d422bd8cfafad8fcd7f",null),a.s(["default",0,f])},78288,a=>{"use strict";var b=a.i(37936),c=a.i(48734);async function d(a){let b=`
+        SELECT n.*, cat.name as category_name, u.name as author_name
+        FROM news n
+        LEFT JOIN categories cat ON n.category_id = cat.id
+        LEFT JOIN users u ON n.author_id = u.id
+    `,d=[];return a&&"all"!==a&&(b+=" WHERE n.status = ?",d.push(a)),b+=" ORDER BY n.created_at DESC",(0,c.query)(b,d)}async function e(a){return(0,c.queryFirst)(`SELECT n.*, cat.name as category_name, u.name as author_name
+         FROM news n
+         LEFT JOIN categories cat ON n.category_id = cat.id
+         LEFT JOIN users u ON n.author_id = u.id
+         WHERE n.id = ?`,[a])}async function f(a){let b=`
+        SELECT n.*, cat.name as category_name, u.name as author_name
+        FROM news n
+        LEFT JOIN categories cat ON n.category_id = cat.id
+        LEFT JOIN users u ON n.author_id = u.id
+        WHERE n.status = 'published'
+        ORDER BY n.published_at DESC
+    `;return a&&(b+=` LIMIT ${a}`),(0,c.query)(b)}async function g(a,b="admin-001"){let d=(0,c.generateId)(),e=(0,c.slugify)(a.title)+"-"+Date.now().toString(36),f=a.status||"draft",h="published"===f?(0,c.nowWIB)():null;try{await (0,c.execute)(`INSERT INTO news (id, title, slug, excerpt, content, image, category_id, author_id, status, published_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[d,a.title,e,a.excerpt||"",a.content||"",a.image||"",a.category_id||null,b,f,h,(0,c.nowWIB)()])}catch(a){throw console.error("createNews error:",a),Error("Gagal menyimpan berita: "+(a?.message||"Unknown error"))}return{id:d,slug:e}}async function h(a,b){let d=[],e=[];void 0!==b.title&&(d.push("title = ?"),e.push(b.title)),void 0!==b.excerpt&&(d.push("excerpt = ?"),e.push(b.excerpt)),void 0!==b.content&&(d.push("content = ?"),e.push(b.content)),void 0!==b.image&&(d.push("image = ?"),e.push(b.image)),void 0!==b.category_id&&(d.push("category_id = ?"),e.push(b.category_id)),void 0!==b.status&&(d.push("status = ?"),e.push(b.status),"published"===b.status&&(d.push("published_at = ?"),e.push((0,c.nowWIB)()))),d.push("updated_at = ?"),e.push((0,c.nowWIB)()),e.push(a),await (0,c.execute)(`UPDATE news SET ${d.join(", ")} WHERE id = ?`,e)}async function i(a){await (0,c.execute)("DELETE FROM news WHERE id = ?",[a])}(0,a.i(13095).ensureServerEntryExports)([d,e,f,g,h,i]),(0,b.registerServerReference)(d,"40acfd779b2a0c8a4f1db6e209b4fecdeabc1e2a64",null),(0,b.registerServerReference)(e,"400dce6d2e7c46bf11b619874d570298c948ecdef9",null),(0,b.registerServerReference)(f,"401030b8607080037b44a144d3ae7d681b386c1fd9",null),(0,b.registerServerReference)(g,"60bfcfae2a0bec125b016bffacc97c61cae0879fcf",null),(0,b.registerServerReference)(h,"6030269e6d6c2999056a1b6897da59aa0627edefa2",null),(0,b.registerServerReference)(i,"409a4fbf651c8255416b3c7a3f26bc1167e331ec69",null),a.s(["createNews",()=>g,"deleteNews",()=>i,"getNews",()=>d,"getNewsById",()=>e,"getPublishedNews",()=>f,"updateNews",()=>h])},15626,a=>{"use strict";var b=a.i(39624),c=a.i(25737),d=a.i(69856),e=a.i(78288);a.s([],58032),a.i(58032),a.s(["0044e7f0bb2859832d1c4d0d422bd8cfafad8fcd7f",()=>d.default,"00cf2a8738ddd41ad6903161d87efa51e887637153",()=>c.getTheme,"40745ded225c07a0af4ec4245c71c88dec53a174cf",()=>c.setTheme,"409a4fbf651c8255416b3c7a3f26bc1167e331ec69",()=>e.deleteNews,"40acfd779b2a0c8a4f1db6e209b4fecdeabc1e2a64",()=>e.getNews,"40ccd30b3cc6655717bc8b6776451d6ff35c8e08bd",()=>b.default],15626)}];
+
+//# sourceMappingURL=_8b32eba6._.js.map
