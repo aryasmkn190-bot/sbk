@@ -51,10 +51,14 @@ export async function uploadImage(formData: FormData) {
     }))
 
     // Return public URL
-    // If you have a custom domain on R2, use that; otherwise use the R2.dev URL
+    // R2_PUBLIC_DOMAIN should be set to your R2.dev URL (e.g. https://pub-xxx.r2.dev)
+    // or a custom domain you've configured on the R2 bucket
+    if (!publicDomain) {
+        console.warn('R2_PUBLIC_DOMAIN not set! Image URLs may not work. Set it to your R2.dev public URL (e.g. https://pub-xxx.r2.dev)')
+    }
     const url = publicDomain
         ? `${publicDomain}/${key}`
-        : `https://${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`
+        : `/${key}` // fallback to relative path
 
     return { url }
 }
