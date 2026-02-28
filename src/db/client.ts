@@ -1,15 +1,36 @@
 /**
- * D1 Database Client — Dual Mode
- *
- * - Local dev: uses better-sqlite3
- * - Production (Cloudflare Workers): uses D1 binding
+ * Supabase Database Client
+ * Uses @supabase/supabase-js for PostgreSQL queries
  */
+
+import { createClient } from '@supabase/supabase-js'
+
+/* ───── Supabase Client (singleton) ───── */
+let supabase: ReturnType<typeof createClient> | null = null
+
+function getSupabase() {
+    if (supabase) return supabase
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!url || !key) {
+        throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env')
+    }
+
+    supabase = createClient(url, key)
+    return supabase
+}
 
 /* ───── Helper: generate UUID-like ID ───── */
 export function generateId(): string {
     const bytes = new Uint8Array(16)
-    for (let i = 0; i < 16; i++) {
-        bytes[i] = Math.floor(Math.random() * 256)
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        crypto.getRandomValues(bytes)
+    } else {
+        for (let i = 0; i < 16; i++) {
+            bytes[i] = Math.floor(Math.random() * 256)
+        }
     }
     return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
@@ -31,72 +52,20 @@ export function nowWIB(): string {
     return wib.toISOString().replace('T', ' ').replace('Z', '').slice(0, 19)
 }
 
-/* ───── Detect Environment ───── */
-function isCloudflare(): boolean {
-    return typeof process === 'undefined' || !!(globalThis as any).__cf_env__
-}
-
-/* ───── Get D1 binding from Cloudflare context ───── */
-function getD1(): any {
-    // In Cloudflare Workers, the env is available via globalThis or process.env
-    const env = (globalThis as any).__cf_env__ || (globalThis as any).process?.env
-    if (env?.DB) return env.DB
-    // Try via getRequestContext if available
-    try {
-        const ctx = (globalThis as any).__cf_ctx__
-        if (ctx?.env?.DB) return ctx.env.DB
-    } catch { /* ignore */ }
-    return null
-}
-
-/* ───── Local Dev: better-sqlite3 ───── */
-let localDb: any = null
-let initialized = false
-
-function getLocalDatabase(): any {
-    if (localDb) return localDb
-
-    const Database = require('better-sqlite3')
-    const path = require('path')
-    const fs = require('fs')
-
-    const dbPath = path.join(process.cwd(), 'data', 'sbk.db')
-
-    const dataDir = path.dirname(dbPath)
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true })
-    }
-
-    localDb = new Database(dbPath)
-    localDb.pragma('journal_mode = WAL')
-    localDb.pragma('foreign_keys = ON')
-
-    if (!initialized) {
-        const schemaPath = path.join(process.cwd(), 'src', 'db', 'schema.sql')
-        if (fs.existsSync(schemaPath)) {
-            const schema = fs.readFileSync(schemaPath, 'utf-8')
-            localDb.exec(schema)
-        }
-        initialized = true
-    }
-
-    return localDb
-}
-
 /* ───── Query: returns array of results ───── */
 export async function query<T = Record<string, unknown>>(
     sql: string,
     params: unknown[] = []
 ): Promise<T[]> {
-    if (isCloudflare()) {
-        const d1 = getD1()
-        const result = await d1.prepare(sql).bind(...params).all()
-        return (result.results || []) as T[]
-    } else {
-        const db = getLocalDatabase()
-        const stmt = db.prepare(sql)
-        return stmt.all(...params) as T[]
+    const sb = getSupabase()
+    const { data, error } = await (sb.rpc as any)('raw_sql', {
+        query_text: replaceParams(sql, params)
+    })
+    if (error) {
+        console.error('Supabase query error:', error.message, sql)
+        throw new Error(error.message)
     }
+    return (data || []) as T[]
 }
 
 /* ───── QueryFirst: returns first result or null ───── */
@@ -104,15 +73,8 @@ export async function queryFirst<T = Record<string, unknown>>(
     sql: string,
     params: unknown[] = []
 ): Promise<T | null> {
-    if (isCloudflare()) {
-        const d1 = getD1()
-        const result = await d1.prepare(sql).bind(...params).first()
-        return (result as T) || null
-    } else {
-        const db = getLocalDatabase()
-        const stmt = db.prepare(sql)
-        return (stmt.get(...params) as T) || null
-    }
+    const results = await query<T>(sql, params)
+    return results[0] || null
 }
 
 /* ───── Execute: INSERT/UPDATE/DELETE ───── */
@@ -120,46 +82,38 @@ export async function execute(
     sql: string,
     params: unknown[] = []
 ): Promise<{ changes: number; lastInsertRowid: number | bigint }> {
-    if (isCloudflare()) {
-        const d1 = getD1()
-        const result = await d1.prepare(sql).bind(...params).run()
-        return {
-            changes: result.meta?.changes || 0,
-            lastInsertRowid: result.meta?.last_row_id || 0,
-        }
-    } else {
-        const db = getLocalDatabase()
-        const stmt = db.prepare(sql)
-        const result = stmt.run(...params)
-        return {
-            changes: result.changes,
-            lastInsertRowid: result.lastInsertRowid,
-        }
+    const sb = getSupabase()
+    const { data, error } = await (sb.rpc as any)('raw_sql', {
+        query_text: replaceParams(sql, params)
+    })
+    if (error) {
+        console.error('Supabase execute error:', error.message, sql)
+        throw new Error(error.message)
     }
+    return { changes: 1, lastInsertRowid: 0 }
 }
 
-/* ───── Transaction ───── */
-export async function transaction<T>(
-    fn: () => Promise<T>
-): Promise<T> {
-    if (isCloudflare()) {
-        // D1 doesn't support traditional transactions in the same way
-        // Just run the function sequentially
-        return fn()
-    } else {
-        const db = getLocalDatabase()
-        const runTransaction = db.transaction(() => {
-            return fn()
-        })
-        return runTransaction() as T
-    }
+/* ───── Replace ? placeholders with $1, $2, ... and inline values ───── */
+function replaceParams(sql: string, params: unknown[]): string {
+    if (params.length === 0) return sql
+
+    let idx = 0
+    const replaced = sql.replace(/\?/g, () => {
+        const val = params[idx++]
+        if (val === null || val === undefined) return 'NULL'
+        if (typeof val === 'number') return String(val)
+        if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE'
+        // Escape single quotes for SQL injection prevention
+        const escaped = String(val).replace(/'/g, "''")
+        return `'${escaped}'`
+    })
+    return replaced
 }
 
 export default {
     query,
     queryFirst,
     execute,
-    transaction,
     generateId,
     slugify,
     nowWIB,

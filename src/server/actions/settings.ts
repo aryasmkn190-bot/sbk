@@ -35,7 +35,8 @@ export async function getSetting(key: string) {
 
 export async function updateSetting(key: string, value: string) {
     await execute(
-        `INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)`,
+        `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
         [key, value, nowWIB()]
     )
 }

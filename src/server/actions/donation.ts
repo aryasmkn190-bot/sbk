@@ -79,7 +79,7 @@ export async function getDonationSummary() {
     )
     const verifiedThisMonth = await queryFirst<{ total: number }>(
         `SELECT COALESCE(SUM(amount), 0) as total FROM donations 
-         WHERE status = 'verified' AND created_at >= datetime('now', 'start of month')`
+         WHERE status = 'verified' AND created_at >= to_char(date_trunc('month', now()) AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS')`
     )
     const totalAll = await queryFirst<{ total: number }>(
         `SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE status = 'verified'`

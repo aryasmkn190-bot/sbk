@@ -1,14 +1,15 @@
 'use server'
 
 /**
- * Upload Image — Dual Mode
- *
- * - Local dev: saves to public/uploads/
- * - Production (Cloudflare): saves to R2 bucket
+ * Upload Image — Supabase Storage
  */
 
-function isCloudflare(): boolean {
-    return typeof process === 'undefined' || !!(globalThis as any).__cf_env__
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    return createClient(url, key)
 }
 
 export async function uploadImage(formData: FormData) {
@@ -19,33 +20,26 @@ export async function uploadImage(formData: FormData) {
     const buffer = Buffer.from(bytes)
     const ext = file.name.split('.').pop() || 'png'
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const filePath = `uploads/${filename}`
 
-    if (isCloudflare()) {
-        // Cloudflare R2
-        try {
-            const env = (globalThis as any).__cf_env__
-            if (env?.STORAGE) {
-                await env.STORAGE.put(`uploads/${filename}`, buffer, {
-                    httpMetadata: { contentType: file.type },
-                })
-                // R2 public URL — you'll need to configure a custom domain or public bucket
-                return { url: `/uploads/${filename}` }
-            }
-        } catch (e) {
-            console.error('R2 upload error:', e)
-        }
-        // Fallback: base64 data URL (works anywhere but larger)
-        const base64 = buffer.toString('base64')
-        return { url: `data:${file.type};base64,${base64}` }
-    } else {
-        // Local filesystem
-        const fs = require('fs/promises') as typeof import('fs/promises')
-        const path = require('path') as typeof import('path')
+    const supabase = getSupabase()
 
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-        await fs.mkdir(uploadDir, { recursive: true })
-        await fs.writeFile(path.join(uploadDir, filename), buffer)
+    const { error } = await supabase.storage
+        .from('sbk-uploads')
+        .upload(filePath, buffer, {
+            contentType: file.type,
+            upsert: false,
+        })
 
-        return { url: `/uploads/${filename}` }
+    if (error) {
+        console.error('Supabase storage upload error:', error)
+        throw new Error('Upload gagal: ' + error.message)
     }
+
+    // Get public URL
+    const { data } = supabase.storage
+        .from('sbk-uploads')
+        .getPublicUrl(filePath)
+
+    return { url: data.publicUrl }
 }

@@ -121,7 +121,7 @@ export async function getCampaignStats() {
     const thisMonthDonations = await queryFirst<{ total: number }>(
         `SELECT COALESCE(SUM(amount), 0) as total FROM donations 
          WHERE status = 'verified' 
-         AND created_at >= datetime('now', 'start of month')`
+         AND created_at >= to_char(date_trunc('month', now()) AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS')`
     )
     const unreadContacts = await queryFirst<{ count: number }>(
         `SELECT COUNT(*) as count FROM contacts WHERE is_read = 0`

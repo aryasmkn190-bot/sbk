@@ -8,10 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prettier": "npx prettier src --check",
-    "prettier:fix": "npm run prettier -- --write",
-    "cf:build": "npx @opennextjs/cloudflare build",
-    "cf:dev": "npx wrangler dev",
-    "cf:deploy": "npx wrangler deploy"
+    "prettier:fix": "npm run prettier -- --write"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.16",
@@ -22,6 +19,7 @@
     "@fullcalendar/timegrid": "^6.1.18",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.1",
+    "@supabase/supabase-js": "^2.98.0",
     "@tanstack/match-sorter-utils": "^8.19.4",
     "@tanstack/react-table": "^8.20.5",
     "@tanstack/react-virtual": "^3.11.2",
@@ -30,7 +28,6 @@
     "@tiptap/starter-kit": "^2.10.4",
     "@visx/pattern": "^3.13.0-alpha.0",
     "axios": "^1.7.7",
-    "better-sqlite3": "^12.6.2",
     "chart.js": "^4.5.1",
     "classnames": "^2.5.1",
     "d3-dsv": "^3.0.1",
@@ -70,7 +67,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@opennextjs/cloudflare": "^1.17.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/better-sqlite3": "^7.6.13",
@@ -99,8 +95,7 @@
     "postcss-nesting": "^13.0.0",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.4",
-    "typescript": "^5",
-    "wrangler": "^4.69.0"
+    "typescript": "^5"
   },
   "overrides": {
     "gantt-task-react": {
